@@ -1,0 +1,24 @@
+[package]
+name = "bmsm-rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = { version = "0.13.0", features = ["wayland", "wav", "vorbis", "mp3"] }
+bms-rs = "0.4.4"
+rust-analyzer = "0.0.1"
+serde_derive = "1.0.197"
+# vorbis = "0.1.0"
+
+# Enable a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
+
+[patch.crates-io]
+bms-rs = { path = "./bms-rs" }

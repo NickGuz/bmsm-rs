@@ -1,0 +1,3 @@
+* TODOs
+- [ ] Get BGMs to play
+- [ ] Fix hit multiple notes at once bug
