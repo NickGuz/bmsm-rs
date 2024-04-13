@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 bevy = { version = "0.13.0", features = ["wayland", "wav", "vorbis", "mp3"] }
 bms-rs = "0.4.4"
+ordered-float = "4.2.0"
 rust-analyzer = "0.0.1"
 serde_derive = "1.0.197"
 # vorbis = "0.1.0"

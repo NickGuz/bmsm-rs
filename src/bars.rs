@@ -1,8 +1,10 @@
 use crate::consts::*;
 use crate::types::*;
 use crate::ScoreResource;
+use bevy::audio::*;
 use bevy::prelude::*;
 use bms_rs::lex::command::ObjId;
+use ordered_float::OrderedFloat;
 
 /// Keeps the textures and materials for Bars
 #[derive(Resource)]
@@ -63,6 +65,31 @@ fn setup_target_bars(mut commands: Commands, materials: Res<BarMaterialResource>
                 ..default()
             })
             .insert(TargetBar);
+    }
+}
+
+fn play_bgms(mut commands: Commands, mut song_config: ResMut<SongConfig>, time: Res<Time>) {
+    // Song starts 3 seconds after start, so we subtract 3 seconds
+    // This might be wrong bc of travel time of the note...
+    // Notes are spawning after 3 seconds, but they don't play until
+    // they are clicked
+    let secs = time.elapsed_seconds_f64() - 4.5;
+    let secs_last = secs - time.delta_seconds_f64();
+
+    for bgm in &song_config.bgms {
+        if secs_last < bgm.spawn_time && bgm.spawn_time <= secs {
+            for audio_source in &bgm.audio_sources {
+                // play sound -- do this somehwere else?
+                commands.spawn(AudioBundle {
+                    source: audio_source.to_owned(),
+                    settings: PlaybackSettings {
+                        volume: Volume::new(VOLUME),
+                        ..default()
+                    },
+                    ..default()
+                });
+            }
+        }
     }
 }
 
@@ -146,6 +173,8 @@ fn despawn_bars(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut score: ResMut<ScoreResource>,
 ) {
+    let mut notes_in_threshold: Vec<(Entity, f32, &Bar)> = Vec::new();
+
     for (entity, transform, bar) in query.iter() {
         let pos = transform.translation.y;
 
@@ -153,15 +182,9 @@ fn despawn_bars(
         if (TARGET_POSITION - THRESHOLD..=TARGET_POSITION + THRESHOLD).contains(&pos)
             && bar.position.key_just_pressed(&keyboard_input)
         {
-            commands.entity(entity).despawn();
-
-            // play sound -- do this somehwere else?
-            commands.spawn(AudioBundle {
-                source: bar.audio_source.to_owned(),
-                ..default()
-            });
-
-            let _points = score.increase_correct(TARGET_POSITION - pos);
+            // before despawning, check if first in lane in threshold?
+            // using lowest y pos for now -- might be bad?
+            notes_in_threshold.push((entity, pos, bar));
         }
 
         // Despawn bar after they leave the screen
@@ -171,6 +194,27 @@ fn despawn_bars(
             score.increase_fails();
         }
     }
+
+    let min_note = notes_in_threshold.iter().min_by_key(|x| OrderedFloat(x.1));
+
+    match min_note {
+        Some((entity, pos, bar)) => {
+            commands.entity(*entity).despawn();
+
+            // play sound -- do this somehwere else?
+            commands.spawn(AudioBundle {
+                source: bar.audio_source.to_owned(),
+                settings: PlaybackSettings {
+                    volume: Volume::new(VOLUME),
+                    ..default()
+                },
+                ..default()
+            });
+
+            let _points = score.increase_correct(TARGET_POSITION - pos);
+        }
+        None => {}
+    };
 }
 
 pub struct BarsPlugin;
@@ -182,5 +226,6 @@ impl Plugin for BarsPlugin {
         app.add_systems(Update, spawn_bars);
         app.add_systems(Update, move_bars);
         app.add_systems(Update, despawn_bars);
+        app.add_systems(Update, play_bgms);
     }
 }

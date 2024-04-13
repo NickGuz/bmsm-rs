@@ -12,3 +12,6 @@ pub const THRESHOLD: f32 = 100.;
 
 /// Total distance traveled by a note, from spawn to target
 pub const DISTANCE: f32 = TARGET_POSITION - SPAWN_POSITION;
+
+/// Temporary global volume level
+pub const VOLUME: f32 = 0.3;

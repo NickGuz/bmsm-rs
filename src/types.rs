@@ -3,7 +3,9 @@ use crate::new_bms_parser;
 use bevy::input::keyboard::KeyCode;
 use bevy::prelude::*;
 use bms_rs::lex::command::Key;
+use bms_rs::lex::command::ObjId;
 use serde_derive::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 // #[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -70,9 +72,16 @@ pub struct NoteTime {
     pub audio_source: Handle<AudioSource>,
 }
 
+#[derive(Clone, Debug)]
+pub struct BGM {
+    pub spawn_time: f64,
+    pub audio_sources: Vec<Handle<AudioSource>>,
+}
+
 #[derive(Resource, Debug)]
 pub struct SongConfig {
     pub notes: Vec<NoteTime>,
+    pub bgms: Vec<BGM>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -90,13 +99,21 @@ pub fn load_config(asset_server: Res<AssetServer>) -> SongConfig {
     let wav_files_map = bms.header.wav_files;
 
     // this is wrong i think
-    let measure_time = (bpm / num_measures) * 0.75;
+    // TODO if we assume all 4/4, then number of measure * 4 = number of beats
+    //      then number of beats / bpm = length of song in seconds
+    let num_beats = num_measures * 4.;
+    let song_length = (num_beats / bpm)  * 60.;
+    println!("Num beats: {}", num_beats);
+    println!("Song length: {}", song_length);
+    // let measure_time = (bpm / num_measures) * 0.75;
+    let measure_time = song_length / num_measures;
+    println!("Measure length: {}", measure_time);
 
     let mut notetimes: Vec<NoteTime> = Vec::new();
     for note in notes.all_notes() {
-        if let 0..=20 = note.offset.track.0 {
-            println!("note: {:#?}", note);
-        }
+        // if let 0..=20 = note.offset.track.0 {
+        // println!("note: {:#?}", note);
+        // }
 
         // load sound file
         let wav_id = note.obj;
@@ -133,12 +150,61 @@ pub fn load_config(asset_server: Res<AssetServer>) -> SongConfig {
             spawn_time,
             position: key,
             audio_source: wav_handle,
-        })
+        });
     }
+
+    let bgms = notes.bgms(); // 'notes' was moved earlier
+                             // let mut bgms: Vec<BGM> = Vec::new();
+    let mut bgms_config_list: Vec<BGM> = Vec::new();
+    for bgm in bgms {
+        let time = bgm.0;
+        let obj_ids = bgm.1;
+
+        // Debug print
+        //if time.track.0 < 20 {
+        //    println!("{:#?}", time);
+        //}
+
+        // println!("Time: {:#?}, ids: {:#?}", time, obj_ids);
+
+        // Determine spawn time
+        // TODO spawn timing is definitely off
+        //      if there are blank notes in the measures, we can determine time signature
+        let measure = time.track.0;
+        let start_time = measure as f64 * measure_time;
+        let note_offset = (time.numerator as f64 / time.denominator as f64) * measure_time;
+        let spawn_time = (start_time + note_offset) as f64;
+
+        // Load all wav_ids for each ObjId
+        // println!("wavmap: {:#?}", wav_files_map);
+        //let mut keys: Vec<_> = wav_files_map.keys().collect::<Vec<_>>();
+        //keys.sort();
+        //println!("keys: {:#?}", keys);
+
+        let audio_sources: Vec<Handle<AudioSource>> = obj_ids
+            .iter()
+            .map(|objid| {
+                //println!("ObjId: {:#?}", objid);
+                let default = PathBuf::from(r"bass_A#1.wav");
+                let wav_file = wav_files_map.get(&objid).clone().unwrap_or(&default);
+                //.expect("Wav file not found");
+                asset_server.load(wav_file.to_owned())
+            })
+            .collect();
+
+        bgms_config_list.push(BGM {
+            spawn_time,
+            audio_sources,
+        });
+    }
+
     println!("bpm: {}", bpm);
     println!("num_measures: {}", num_measures);
     println!("wav_path_root: {:#?}", bms.header.wav_path_root);
 
     // println!("NoteTimes: {:#?}", notetimes);
-    SongConfig { notes: notetimes }
+    SongConfig {
+        notes: notetimes,
+        bgms: bgms_config_list,
+    }
 }
