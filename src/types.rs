@@ -87,9 +87,9 @@ pub struct SongConfig {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Position {}
 
-pub fn load_config(asset_server: Res<AssetServer>) -> SongConfig {
+pub fn load_config(file_path: &str, asset_server: Res<AssetServer>) -> SongConfig {
     // test parse file
-    let file_path = "[Cres.]endtime/end_time_n.bms";
+    // let file_path = "[Cres.]endtime/end_time_n.bms";
     let bms = new_bms_parser::new_parse(file_path);
     let bpm = bms.header.bpm.unwrap();
     let notes = bms.notes;
@@ -185,10 +185,16 @@ pub fn load_config(asset_server: Res<AssetServer>) -> SongConfig {
             .iter()
             .map(|objid| {
                 //println!("ObjId: {:#?}", objid);
+                // TODO fix at some point
                 let default = PathBuf::from(r"bass_A#1.wav");
-                let wav_file = wav_files_map.get(&objid).clone().unwrap_or(&default);
+                let wav_file = wav_files_map.get(&objid).clone().unwrap_or(&default).to_owned();
                 //.expect("Wav file not found");
-                asset_server.load(wav_file.to_owned())
+                let path = format!("songs/{}", file_path);
+                let path_buf = PathBuf::from(path);
+                let parent_path = path_buf.parent().to_owned().expect("could not find parent path");
+                let wav_path = parent_path.join(&wav_file);
+                println!("wav_path: {:#?}", wav_path);
+                asset_server.load(wav_file)
             })
             .collect();
 

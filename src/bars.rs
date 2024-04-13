@@ -180,11 +180,21 @@ fn despawn_bars(
 
         // Check if bar is inside clicking threshold
         if (TARGET_POSITION - THRESHOLD..=TARGET_POSITION + THRESHOLD).contains(&pos)
-            && bar.position.key_just_pressed(&keyboard_input)
+            && (bar.position.key_just_pressed(&keyboard_input) || AUTOPLAY_ENABLED)
         {
-            // before despawning, check if first in lane in threshold?
-            // using lowest y pos for now -- might be bad?
-            notes_in_threshold.push((entity, pos, bar));
+            // TODO this is stupid -- maybe set threshold to AUTOPLAY_THRESHOLD earlier if AUTOPLAY
+            // is enabled or something
+            if AUTOPLAY_ENABLED {
+                if (TARGET_POSITION - AUTOPLAY_THRESHOLD..=TARGET_POSITION + AUTOPLAY_THRESHOLD)
+                    .contains(&pos)
+                {
+                    notes_in_threshold.push((entity, pos, bar));
+                }
+            } else {
+                // before despawning, check if first in lane in threshold?
+                // using lowest y pos for now -- might be bad?
+                notes_in_threshold.push((entity, pos, bar));
+            }
         }
 
         // Despawn bar after they leave the screen

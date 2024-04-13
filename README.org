@@ -4,5 +4,7 @@
 - [x] Fix spawn timing of notes and bgms
   - sortof fixed, working for this song but no general solution yet
 - [x] Fix hit multiple notes at once bug
-- [ ] Implement autoplay -- depends on hit multiple notes at once bug fixed
+- [x] Implement autoplay -- depends on hit multiple notes at once bug fixed
+- [ ] Don't allow user to click notes with autoplay on
 - [ ] Basic song select for testing different charts
+- [ ] Basic settings interface (prob no UI yet)

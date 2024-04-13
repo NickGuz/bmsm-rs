@@ -55,6 +55,7 @@
             xorg.libXrandr
             libxkbcommon
             wayland
+            ripgrep
             (
               rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
                 extensions = [ 

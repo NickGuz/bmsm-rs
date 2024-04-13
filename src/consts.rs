@@ -10,8 +10,14 @@ pub const TARGET_POSITION: f32 = -300.;
 /// Margin of error for clicking a note
 pub const THRESHOLD: f32 = 100.;
 
+/// This should probably be temporary maybe idk
+pub const AUTOPLAY_THRESHOLD: f32 = 1.;
+
 /// Total distance traveled by a note, from spawn to target
 pub const DISTANCE: f32 = TARGET_POSITION - SPAWN_POSITION;
 
 /// Temporary global volume level
 pub const VOLUME: f32 = 0.3;
+
+/// Temporary autoplay option
+pub const AUTOPLAY_ENABLED: bool = true;
