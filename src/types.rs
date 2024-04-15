@@ -90,6 +90,7 @@ pub enum Position {}
 pub fn load_config(file_path: &str, asset_server: Res<AssetServer>) -> SongConfig {
     // test parse file
     // let file_path = "[Cres.]endtime/end_time_n.bms";
+    println!("Loading file_path={}", file_path);
     let bms = new_bms_parser::new_parse(file_path);
     let bpm = bms.header.bpm.unwrap();
     let notes = bms.notes;
@@ -102,7 +103,7 @@ pub fn load_config(file_path: &str, asset_server: Res<AssetServer>) -> SongConfi
     // TODO if we assume all 4/4, then number of measure * 4 = number of beats
     //      then number of beats / bpm = length of song in seconds
     let num_beats = num_measures * 4.;
-    let song_length = (num_beats / bpm)  * 60.;
+    let song_length = (num_beats / bpm) * 60.;
     println!("Num beats: {}", num_beats);
     println!("Song length: {}", song_length);
     // let measure_time = (bpm / num_measures) * 0.75;
@@ -119,7 +120,15 @@ pub fn load_config(file_path: &str, asset_server: Res<AssetServer>) -> SongConfi
         let wav_id = note.obj;
         // let wav_file = wav_files_map.get(&wav_id).unwrap().to_str().unwrap();
         let wav_file = wav_files_map.get(&wav_id).clone().unwrap();
-        let wav_handle: Handle<AudioSource> = asset_server.load(wav_file.to_owned());
+        // let path = format!("songs/{}", file_path);
+        let path_buf = PathBuf::from(file_path);
+        let parent_path = path_buf
+            .parent()
+            .to_owned()
+            .expect("could not find parent path");
+        let wav_path = parent_path.join(&wav_file);
+        // println!("wav_path: {:#?}", wav_path);
+        let wav_handle: Handle<AudioSource> = asset_server.load(wav_path);
 
         // determine spawn time based on measure, numerator, denominator -- probably wrong
         // TODO: yeah this doesn't work
@@ -187,14 +196,21 @@ pub fn load_config(file_path: &str, asset_server: Res<AssetServer>) -> SongConfi
                 //println!("ObjId: {:#?}", objid);
                 // TODO fix at some point
                 let default = PathBuf::from(r"bass_A#1.wav");
-                let wav_file = wav_files_map.get(&objid).clone().unwrap_or(&default).to_owned();
+                let wav_file = wav_files_map
+                    .get(&objid)
+                    .clone()
+                    .unwrap_or(&default)
+                    .to_owned();
                 //.expect("Wav file not found");
-                let path = format!("songs/{}", file_path);
-                let path_buf = PathBuf::from(path);
-                let parent_path = path_buf.parent().to_owned().expect("could not find parent path");
+                // let path = format!("songs/{}", file_path);
+                let path_buf = PathBuf::from(file_path);
+                let parent_path = path_buf
+                    .parent()
+                    .to_owned()
+                    .expect("could not find parent path");
                 let wav_path = parent_path.join(&wav_file);
-                println!("wav_path: {:#?}", wav_path);
-                asset_server.load(wav_file)
+                // println!("wav_path: {:#?}", wav_path);
+                asset_server.load(wav_path)
             })
             .collect();
 

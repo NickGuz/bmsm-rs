@@ -143,7 +143,7 @@ fn setup(
     // window_query: Query<&Window, With<PrimaryWindow>>,
     asset_server: Res<AssetServer>,
 ) {
-    let config = types::load_config("assets/songs/[Cres.]endtime/end_time_n.bms", asset_server);
+    let config = types::load_config("songs/[Cres.]endtime/end_time_n.bms", asset_server);
 
     // Camera
     commands.spawn(Camera2dBundle::default());
