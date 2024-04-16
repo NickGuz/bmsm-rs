@@ -34,7 +34,8 @@ impl FromWorld for BarMaterialResource {
 #[derive(Component)]
 struct Bar {
     position: Positions,
-    audio_source: Handle<AudioSource>,
+    // audio_source: Handle<AudioSource>,
+    audio_source_id: ObjId,
 }
 
 #[derive(Resource)]
@@ -78,10 +79,13 @@ fn play_bgms(mut commands: Commands, mut song_config: ResMut<SongConfig>, time: 
 
     for bgm in &song_config.bgms {
         if secs_last < bgm.spawn_time && bgm.spawn_time <= secs {
-            for audio_source in &bgm.audio_sources {
+            for id in &bgm.audio_source_ids {
+                // get handle from map
+                let audio_handle = song_config.audio_handles.get(&id).expect("Could not find bgm audio handle in map");
+
                 // play sound -- do this somehwere else?
                 commands.spawn(AudioBundle {
-                    source: audio_source.to_owned(),
+                    source: audio_handle.clone(),
                     settings: PlaybackSettings {
                         volume: Volume::new(VOLUME),
                         ..default()
@@ -145,7 +149,7 @@ fn spawn_bars(
                 })
                 .insert(Bar {
                     position: bar.position,
-                    audio_source: bar.audio_source.to_owned(),
+                    audio_source_id: bar.audio_source_id.to_owned(),
                 });
         } else {
             break;
@@ -169,7 +173,7 @@ fn move_bars(time: Res<Time>, mut query: Query<(&mut Transform, &Bar)>) {
 fn despawn_bars(
     mut commands: Commands,
     query: Query<(Entity, &Transform, &Bar)>,
-    // mut song_config: ResMut<SongConfig>,
+    mut song_config: ResMut<SongConfig>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut score: ResMut<ScoreResource>,
 ) {
@@ -211,9 +215,12 @@ fn despawn_bars(
         Some((entity, pos, bar)) => {
             commands.entity(*entity).despawn();
 
+            // get audio handle
+            let audio_handle = song_config.audio_handles.get(&bar.audio_source_id).expect("Audio source ID not found in map");
+
             // play sound -- do this somehwere else?
             commands.spawn(AudioBundle {
-                source: bar.audio_source.to_owned(),
+                source: audio_handle.clone(),
                 settings: PlaybackSettings {
                     volume: Volume::new(VOLUME),
                     ..default()

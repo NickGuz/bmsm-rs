@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bms_rs::lex::command::Key;
 use bms_rs::lex::command::ObjId;
 use serde_derive::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 // #[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
@@ -69,19 +70,22 @@ impl Positions {
 pub struct NoteTime {
     pub spawn_time: f64,
     pub position: Positions,
-    pub audio_source: Handle<AudioSource>,
+    // pub audio_source: Handle<AudioSource>,
+    pub audio_source_id: ObjId,
 }
 
 #[derive(Clone, Debug)]
 pub struct BGM {
     pub spawn_time: f64,
-    pub audio_sources: Vec<Handle<AudioSource>>,
+    // pub audio_sources: Vec<Handle<AudioSource>>,
+    pub audio_source_ids: Vec<ObjId>,
 }
 
 #[derive(Resource, Debug)]
 pub struct SongConfig {
     pub notes: Vec<NoteTime>,
     pub bgms: Vec<BGM>,
+    pub audio_handles: HashMap<ObjId, Handle<AudioSource>>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -110,30 +114,32 @@ pub fn load_config(file_path: &str, asset_server: Res<AssetServer>) -> SongConfi
     let measure_time = song_length / num_measures;
     println!("Measure length: {}", measure_time);
 
+    let mut audio_handles_map: HashMap<ObjId, Handle<AudioSource>> = HashMap::new();
+
     let mut notetimes: Vec<NoteTime> = Vec::new();
     for note in notes.all_notes() {
         // if let 0..=20 = note.offset.track.0 {
         // println!("note: {:#?}", note);
         // }
 
-        // load sound file
+        // load sound file if not already loaded
         let wav_id = note.obj;
-        // let wav_file = wav_files_map.get(&wav_id).unwrap().to_str().unwrap();
-        let wav_file = wav_files_map.get(&wav_id).clone().unwrap();
-        // let path = format!("songs/{}", file_path);
-        let path_buf = PathBuf::from(file_path);
-        let parent_path = path_buf
-            .parent()
-            .to_owned()
-            .expect("could not find parent path");
-        let wav_path = parent_path.join(&wav_file);
-        // println!("wav_path: {:#?}", wav_path);
-        let wav_handle: Handle<AudioSource> = asset_server.load(wav_path);
+        if !audio_handles_map.contains_key(&wav_id) {
+            // let wav_file = wav_files_map.get(&wav_id).unwrap().to_str().unwrap();
+            let wav_file = wav_files_map.get(&wav_id).clone().unwrap();
+            // let path = format!("songs/{}", file_path);
+            let path_buf = PathBuf::from(file_path);
+            let parent_path = path_buf
+                .parent()
+                .to_owned()
+                .expect("could not find parent path");
+            let wav_path = parent_path.join(&wav_file);
+            // println!("wav_path: {:#?}", wav_path);
+            let wav_handle: Handle<AudioSource> = asset_server.load(wav_path);
+            audio_handles_map.insert(wav_id.to_owned(), wav_handle);
+        }
 
         // determine spawn time based on measure, numerator, denominator -- probably wrong
-        // TODO: yeah this doesn't work
-        // this assumes that a measure is equal to a second i think, but that's obviously not true
-        // need to use bpm and figure this out
         let numerator = note.offset.numerator;
         let denominator = note.offset.denominator;
         let measure = note.offset.track.0;
@@ -158,7 +164,7 @@ pub fn load_config(file_path: &str, asset_server: Res<AssetServer>) -> SongConfi
         notetimes.push(NoteTime {
             spawn_time,
             position: key,
-            audio_source: wav_handle,
+            audio_source_id: wav_id,
         });
     }
 
@@ -169,13 +175,6 @@ pub fn load_config(file_path: &str, asset_server: Res<AssetServer>) -> SongConfi
         let time = bgm.0;
         let obj_ids = bgm.1;
 
-        // Debug print
-        //if time.track.0 < 20 {
-        //    println!("{:#?}", time);
-        //}
-
-        // println!("Time: {:#?}, ids: {:#?}", time, obj_ids);
-
         // Determine spawn time
         // TODO spawn timing is definitely off
         //      if there are blank notes in the measures, we can determine time signature
@@ -184,39 +183,25 @@ pub fn load_config(file_path: &str, asset_server: Res<AssetServer>) -> SongConfi
         let note_offset = (time.numerator as f64 / time.denominator as f64) * measure_time;
         let spawn_time = (start_time + note_offset) as f64;
 
-        // Load all wav_ids for each ObjId
-        // println!("wavmap: {:#?}", wav_files_map);
-        //let mut keys: Vec<_> = wav_files_map.keys().collect::<Vec<_>>();
-        //keys.sort();
-        //println!("keys: {:#?}", keys);
-
-        let audio_sources: Vec<Handle<AudioSource>> = obj_ids
-            .iter()
-            .map(|objid| {
-                //println!("ObjId: {:#?}", objid);
-                // TODO fix at some point
+        for id in obj_ids {
+            if !audio_handles_map.contains_key(&id) {
+                println!("objid {:#?}", &id);
                 let default = PathBuf::from(r"bass_A#1.wav");
-                let wav_file = wav_files_map
-                    .get(&objid)
-                    .clone()
-                    .unwrap_or(&default)
-                    .to_owned();
-                //.expect("Wav file not found");
-                // let path = format!("songs/{}", file_path);
+                let wav_file = wav_files_map.get(&id).clone().unwrap_or(&default);
                 let path_buf = PathBuf::from(file_path);
                 let parent_path = path_buf
                     .parent()
                     .to_owned()
                     .expect("could not find parent path");
                 let wav_path = parent_path.join(&wav_file);
-                // println!("wav_path: {:#?}", wav_path);
-                asset_server.load(wav_path)
-            })
-            .collect();
+                let wav_handle: Handle<AudioSource> = asset_server.load(wav_path);
+                audio_handles_map.insert(id.to_owned(), wav_handle);
+            }
+        }
 
         bgms_config_list.push(BGM {
             spawn_time,
-            audio_sources,
+            audio_source_ids: obj_ids.clone(),
         });
     }
 
@@ -228,5 +213,6 @@ pub fn load_config(file_path: &str, asset_server: Res<AssetServer>) -> SongConfi
     SongConfig {
         notes: notetimes,
         bgms: bgms_config_list,
+        audio_handles: audio_handles_map,
     }
 }

@@ -87,9 +87,9 @@ fn play_beats(
             ..default()
         });
 
-        for item in query.iter() {
-            println!("{:#?}", item.0);
-        }
+        // for item in query.iter() {
+        //     println!("{:#?}", item.0);
+        // }
         // if let Ok(sink) = audio.get_single() {
         //     sink.play();
         // }
