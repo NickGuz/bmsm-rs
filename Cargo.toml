@@ -6,7 +6,31 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.13.0", features = ["wayland", "wav", "vorbis", "mp3"] }
+# bevy = { version = "0.13.2", features = ["wayland", "wav", "vorbis", "mp3"] }
+bevy = { version = "0.13.2", default-features = false, features = [
+    "animation",
+    "bevy_asset",
+    "bevy_gilrs",
+    "bevy_scene",
+    "bevy_winit",
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    "bevy_gltf",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_text",
+    "bevy_ui",
+    "multi-threaded",
+    "png",
+    "hdr",
+    "x11",
+    "wayland",
+    "bevy_gizmos",
+    "tonemapping_luts",
+    "default_font",
+    "bevy_debug_stepping"
+] }
+bevy_kira_audio = { version = "0.19", features = [ "wav" ] }
 bms-rs = "0.4.4"
 ordered-float = "4.2.0"
 rust-analyzer = "0.0.1"

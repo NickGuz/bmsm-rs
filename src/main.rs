@@ -1,6 +1,6 @@
 #![feature(str_split_whitespace_remainder)]
 
-use bevy::audio::AudioPlugin;
+use bevy_kira_audio::prelude::*;
 use bevy::prelude::*;
 use bevy::window::{PrimaryWindow, WindowResolution};
 use std::collections::BTreeMap;
@@ -47,6 +47,7 @@ fn main() {
             }),
             ..Default::default()
         }))
+        .add_plugins(AudioPlugin)
         .init_resource::<ScoreResource>()
         .add_plugins(BarsPlugin)
         .add_plugins(ui::UIPlugin)
@@ -82,10 +83,10 @@ fn play_beats(
         //     }
         // }
         let file_path = "piano_B3.wav";
-        commands.spawn(AudioBundle {
-            source: asset_server.load(file_path),
-            ..default()
-        });
+        // commands.spawn(AudioBundle {
+        //     source: asset_server.load(file_path),
+        //     ..default()
+        // });
 
         // for item in query.iter() {
         //     println!("{:#?}", item.0);

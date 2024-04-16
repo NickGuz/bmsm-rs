@@ -1,10 +1,11 @@
 use crate::consts::*;
 use crate::types::*;
 use crate::ScoreResource;
-use bevy::audio::*;
+// use bevy::audio::*;
 use bevy::prelude::*;
 use bms_rs::lex::command::ObjId;
 use ordered_float::OrderedFloat;
+use bevy_kira_audio::prelude::*;
 
 /// Keeps the textures and materials for Bars
 #[derive(Resource)]
@@ -69,7 +70,7 @@ fn setup_target_bars(mut commands: Commands, materials: Res<BarMaterialResource>
     }
 }
 
-fn play_bgms(mut commands: Commands, mut song_config: ResMut<SongConfig>, time: Res<Time>) {
+fn play_bgms(mut commands: Commands, mut song_config: ResMut<SongConfig>, time: Res<Time>, audio: Res<Audio>) {
     // Song starts 3 seconds after start, so we subtract 3 seconds
     // This might be wrong bc of travel time of the note...
     // Notes are spawning after 3 seconds, but they don't play until
@@ -84,14 +85,15 @@ fn play_bgms(mut commands: Commands, mut song_config: ResMut<SongConfig>, time: 
                 let audio_handle = song_config.audio_handles.get(&id).expect("Could not find bgm audio handle in map");
 
                 // play sound -- do this somehwere else?
-                commands.spawn(AudioBundle {
-                    source: audio_handle.clone(),
-                    settings: PlaybackSettings {
-                        volume: Volume::new(VOLUME),
-                        ..default()
-                    },
-                    ..default()
-                });
+                // commands.spawn(AudioBundle {
+                //     source: audio_handle.clone(),
+                //     settings: PlaybackSettings {
+                //         volume: Volume::new(VOLUME),
+                //         ..default()
+                //     },
+                //     ..default()
+                // });
+                audio.play(audio_handle.clone()).with_volume(0.3);
             }
         }
     }
@@ -176,6 +178,7 @@ fn despawn_bars(
     mut song_config: ResMut<SongConfig>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut score: ResMut<ScoreResource>,
+    audio: Res<Audio>,
 ) {
     let mut notes_in_threshold: Vec<(Entity, f32, &Bar)> = Vec::new();
 
@@ -219,14 +222,15 @@ fn despawn_bars(
             let audio_handle = song_config.audio_handles.get(&bar.audio_source_id).expect("Audio source ID not found in map");
 
             // play sound -- do this somehwere else?
-            commands.spawn(AudioBundle {
-                source: audio_handle.clone(),
-                settings: PlaybackSettings {
-                    volume: Volume::new(VOLUME),
-                    ..default()
-                },
-                ..default()
-            });
+            // commands.spawn(AudioBundle {
+            //     source: audio_handle.clone(),
+            //     settings: PlaybackSettings {
+            //         volume: Volume::new(VOLUME),
+            //         ..default()
+            //     },
+            //     ..default()
+            // });
+            audio.play(audio_handle.clone()).with_volume(0.3);
 
             let _points = score.increase_correct(TARGET_POSITION - pos);
         }

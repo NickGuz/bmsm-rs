@@ -7,6 +7,7 @@ use bms_rs::lex::command::ObjId;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use bevy_kira_audio::prelude::*;
 
 // #[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[derive(Copy, Clone, Debug, PartialEq)]
