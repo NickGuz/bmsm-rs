@@ -1,11 +1,13 @@
 use crate::consts::*;
+use crate::time::ControlledTime;
 use crate::types::*;
+use crate::user_settings::UserSettings;
 use crate::ScoreResource;
 // use bevy::audio::*;
 use bevy::prelude::*;
+use bevy_kira_audio::prelude::*;
 use bms_rs::lex::command::ObjId;
 use ordered_float::OrderedFloat;
-use bevy_kira_audio::prelude::*;
 
 /// Keeps the textures and materials for Bars
 #[derive(Resource)]
@@ -33,6 +35,9 @@ impl FromWorld for BarMaterialResource {
 }
 
 #[derive(Component)]
+pub struct GameplayUI;
+
+#[derive(Component)]
 struct Bar {
     position: Positions,
     // audio_source: Handle<AudioSource>,
@@ -45,11 +50,18 @@ struct SpawnTimer(Timer);
 #[derive(Component)]
 struct TargetBar;
 
+fn despawn_ui(mut commands: Commands, query: Query<(Entity, &GameplayUI)>) {
+    for (entity, _) in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+
 fn setup_target_bars(mut commands: Commands, materials: Res<BarMaterialResource>) {
+    println!("setting up target bars");
     let bar_width = 100.;
     let bar_offset = 400.;
 
-    for n in 1..7 {
+    for n in 1..=7 {
         let transform = Transform::from_translation(Vec3::new(
             n as f32 * bar_width - bar_offset,
             TARGET_POSITION,
@@ -66,23 +78,33 @@ fn setup_target_bars(mut commands: Commands, materials: Res<BarMaterialResource>
                 transform,
                 ..default()
             })
-            .insert(TargetBar);
+            .insert(TargetBar)
+            .insert(GameplayUI);
     }
 }
 
-fn play_bgms(mut commands: Commands, mut song_config: ResMut<SongConfig>, time: Res<Time>, audio: Res<Audio>) {
+fn play_bgms(
+    mut commands: Commands,
+    mut song_config: ResMut<SongConfig>,
+    time: Res<ControlledTime>,
+    audio: Res<Audio>,
+) {
     // Song starts 3 seconds after start, so we subtract 3 seconds
     // This might be wrong bc of travel time of the note...
     // Notes are spawning after 3 seconds, but they don't play until
     // they are clicked
-    let secs = time.elapsed_seconds_f64() - 4.5;
+    let secs = time.seconds_since_startup() - 3.75;
     let secs_last = secs - time.delta_seconds_f64();
 
+    let mut remove_counter = 0;
     for bgm in &song_config.bgms {
         if secs_last < bgm.spawn_time && bgm.spawn_time <= secs {
             for id in &bgm.audio_source_ids {
                 // get handle from map
-                let audio_handle = song_config.audio_handles.get(&id).expect("Could not find bgm audio handle in map");
+                let audio_handle = song_config
+                    .audio_handles
+                    .get(&id)
+                    .expect("Could not find bgm audio handle in map");
 
                 // play sound -- do this somehwere else?
                 // commands.spawn(AudioBundle {
@@ -93,9 +115,15 @@ fn play_bgms(mut commands: Commands, mut song_config: ResMut<SongConfig>, time: 
                 //     },
                 //     ..default()
                 // });
-                audio.play(audio_handle.clone()).with_volume(0.3);
+                audio.play(audio_handle.clone()).with_volume(VOLUME);
             }
+            // TODO this does not work
+            // remove_counter += 1;
         }
+    }
+
+    for _ in 0..remove_counter {
+        song_config.bgms.remove(0);
     }
 }
 
@@ -103,14 +131,14 @@ fn spawn_bars(
     mut commands: Commands,
     mut song_config: ResMut<SongConfig>,
     materials: Res<BarMaterialResource>,
-    time: Res<Time>,
+    time: Res<ControlledTime>,
     // mut timer: ResMut<SpawnTimer>,
 ) {
     // We get the current time since startup (secs) and the time since the last iterations (secs_last),
     // this way we check if any bars should spawn in this window
 
     // Song starts 3 seconds after start, so we subtract 3 seconds
-    let secs = time.elapsed_seconds_f64() - 3.;
+    let secs = time.seconds_since_startup() - 3.;
     let secs_last = secs - time.delta_seconds_f64();
 
     // Counter of how many bars we need to spawn and remove from the list
@@ -152,7 +180,8 @@ fn spawn_bars(
                 .insert(Bar {
                     position: bar.position,
                     audio_source_id: bar.audio_source_id.to_owned(),
-                });
+                })
+                .insert(GameplayUI);
         } else {
             break;
         }
@@ -165,9 +194,13 @@ fn spawn_bars(
 }
 
 /// Moves the bars downward
-fn move_bars(time: Res<Time>, mut query: Query<(&mut Transform, &Bar)>) {
+fn move_bars(
+    time: Res<ControlledTime>,
+    mut query: Query<(&mut Transform, &Bar)>,
+    settings: Res<UserSettings>,
+) {
     for (mut transform, _bar) in query.iter_mut() {
-        transform.translation.y -= time.delta_seconds() * BASE_SPEED;
+        transform.translation.y -= time.delta_seconds() * settings.scroll_speed;
     }
 }
 
@@ -179,6 +212,7 @@ fn despawn_bars(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut score: ResMut<ScoreResource>,
     audio: Res<Audio>,
+    settings: Res<UserSettings>,
 ) {
     let mut notes_in_threshold: Vec<(Entity, f32, &Bar)> = Vec::new();
 
@@ -187,11 +221,11 @@ fn despawn_bars(
 
         // Check if bar is inside clicking threshold
         if (TARGET_POSITION - THRESHOLD..=TARGET_POSITION + THRESHOLD).contains(&pos)
-            && (bar.position.key_just_pressed(&keyboard_input) || AUTOPLAY_ENABLED)
+            && (bar.position.key_just_pressed(&keyboard_input) || settings.autoplay_enabled)
         {
             // TODO this is stupid -- maybe set threshold to AUTOPLAY_THRESHOLD earlier if AUTOPLAY
             // is enabled or something
-            if AUTOPLAY_ENABLED {
+            if settings.autoplay_enabled {
                 if (TARGET_POSITION - AUTOPLAY_THRESHOLD..=TARGET_POSITION + AUTOPLAY_THRESHOLD)
                     .contains(&pos)
                 {
@@ -219,34 +253,96 @@ fn despawn_bars(
             commands.entity(*entity).despawn();
 
             // get audio handle
-            let audio_handle = song_config.audio_handles.get(&bar.audio_source_id).expect("Audio source ID not found in map");
+            let audio_handle = song_config
+                .audio_handles
+                .get(&bar.audio_source_id)
+                .expect("Audio source ID not found in map");
 
-            // play sound -- do this somehwere else?
-            // commands.spawn(AudioBundle {
-            //     source: audio_handle.clone(),
-            //     settings: PlaybackSettings {
-            //         volume: Volume::new(VOLUME),
-            //         ..default()
-            //     },
-            //     ..default()
-            // });
-            audio.play(audio_handle.clone()).with_volume(0.3);
+            audio.play(audio_handle.clone()).with_volume(VOLUME);
 
             let _points = score.increase_correct(TARGET_POSITION - pos);
+
+            let msval =
+                calculate_milliseconds_from_target(*pos, TARGET_POSITION, settings.scroll_speed);
+
+            // using mostly IIDX timings for now
+            if msval <= 16.67 {
+                score.pgreats += 1;
+            } else if msval <= 33.33 {
+                score.greats += 1;
+            } else if msval <= 116.67 {
+                score.goods += 1;
+            } else if msval <= 250.0 {
+                score.bads += 1;
+            } else if msval <= 1000.0 {
+                score.poors += 1;
+            } else {
+                println!("MISS");
+            }
         }
         None => {}
     };
 }
 
-pub struct BarsPlugin;
-impl Plugin for BarsPlugin {
+fn calculate_milliseconds_from_target(pos: f32, target_pos: f32, note_speed: f32) -> f32 {
+    let distance = (target_pos - pos).abs();
+    let time_in_seconds = distance / note_speed;
+    time_in_seconds * 1000.0
+}
+
+fn show_results_on_finished(
+    song_config: Res<SongConfig>,
+    mut next_state: ResMut<NextState<MyAppState>>,
+) {
+    // println!(
+    //     "noteslen: {}, bgmslen: {}",
+    //     song_config.notes.len(),
+    //     song_config.bgms.len()
+    // );
+
+    // TODO for some reason we have leftover bgms, so just ignoring that for now
+    if song_config.notes.is_empty() {
+        //&& song_config.bgms.is_empty() {
+        next_state.set(MyAppState::Results);
+        println!("Switching to Results state");
+    }
+}
+
+fn debug_goto_results(
+    mut song_config: ResMut<SongConfig>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        song_config.bgms.clear();
+        song_config.notes.clear();
+    }
+}
+
+pub struct BarsPlugin<S: States> {
+    pub state: S,
+}
+
+impl<S: States> Plugin for BarsPlugin<S> {
     fn build(&self, app: &mut App) {
         app.init_resource::<BarMaterialResource>();
         app.insert_resource(SpawnTimer(Timer::from_seconds(1.0, TimerMode::Repeating)));
-        app.add_systems(Startup, setup_target_bars);
-        app.add_systems(Update, spawn_bars);
-        app.add_systems(Update, move_bars);
-        app.add_systems(Update, despawn_bars);
-        app.add_systems(Update, play_bgms);
+        // app.add_systems(
+        //     Startup,
+        //     setup_target_bars.run_if(in_state(self.state.clone())),
+        // );
+        app.add_systems(OnEnter(self.state.clone()), setup_target_bars);
+        app.add_systems(
+            Update,
+            (
+                spawn_bars,
+                move_bars,
+                despawn_bars,
+                play_bgms,
+                show_results_on_finished,
+                debug_goto_results,
+            )
+                .run_if(in_state(self.state.clone())),
+        );
+        app.add_systems(OnExit(self.state.clone()), despawn_ui);
     }
 }

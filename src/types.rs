@@ -2,12 +2,12 @@ use crate::consts::*;
 use crate::new_bms_parser;
 use bevy::input::keyboard::KeyCode;
 use bevy::prelude::*;
+use bevy_kira_audio::prelude::*;
 use bms_rs::lex::command::Key;
 use bms_rs::lex::command::ObjId;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use bevy_kira_audio::prelude::*;
 
 // #[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -92,7 +92,7 @@ pub struct SongConfig {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Position {}
 
-pub fn load_config(file_path: &str, asset_server: Res<AssetServer>) -> SongConfig {
+pub fn load_config(file_path: &str, asset_server: &AssetServer) -> SongConfig {
     // test parse file
     // let file_path = "[Cres.]endtime/end_time_n.bms";
     println!("Loading file_path={}", file_path);
@@ -186,7 +186,7 @@ pub fn load_config(file_path: &str, asset_server: Res<AssetServer>) -> SongConfi
 
         for id in obj_ids {
             if !audio_handles_map.contains_key(&id) {
-                println!("objid {:#?}", &id);
+                // println!("objid {:#?}", &id);
                 let default = PathBuf::from(r"bass_A#1.wav");
                 let wav_file = wav_files_map.get(&id).clone().unwrap_or(&default);
                 let path_buf = PathBuf::from(file_path);

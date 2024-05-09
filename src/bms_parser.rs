@@ -109,22 +109,22 @@ pub fn parse(mut commands: Commands) {
 
     let block_y = 0.0;
 
-    commands.spawn((
-        SpriteBundle {
-            transform: Transform {
-                translation: Vec3::new(0.0, block_y, 0.0),
-                scale: BLOCK_SIZE,
-                ..default()
-            },
-            sprite: Sprite {
-                color: BLOCK_COLOR,
-                ..default()
-            },
-            ..default()
-        },
-        crate::Block,
-        crate::Collider,
-    ));
+    // commands.spawn((
+    //     SpriteBundle {
+    //         transform: Transform {
+    //             translation: Vec3::new(0.0, block_y, 0.0),
+    //             scale: BLOCK_SIZE,
+    //             ..default()
+    //         },
+    //         sprite: Sprite {
+    //             color: BLOCK_COLOR,
+    //             ..default()
+    //         },
+    //         ..default()
+    //     },
+    //     crate::Block,
+    //     crate::Collider,
+    // ));
 
     // FileData {
     //     metadata,
