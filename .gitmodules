@@ -1,0 +1,3 @@
+[submodule "bms-rs"]
+	path = bms-rs
+	url = git@github.com:NickGuz/bms-rs.git

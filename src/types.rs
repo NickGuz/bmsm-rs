@@ -117,6 +117,11 @@ pub fn load_config(file_path: &str, asset_server: &AssetServer) -> SongConfig {
 
     let mut audio_handles_map: HashMap<ObjId, Handle<AudioSource>> = HashMap::new();
 
+    let mut wavs_vec: Vec<(&ObjId, &PathBuf)> = wav_files_map.iter().collect();
+    wavs_vec.sort_by_key(|&(key, _value)| key);
+    wavs_vec.reverse();
+    // println!("sorted_wavs: {:#?}", wavs_vec);
+
     let mut notetimes: Vec<NoteTime> = Vec::new();
     for note in notes.all_notes() {
         // if let 0..=20 = note.offset.track.0 {
@@ -127,15 +132,25 @@ pub fn load_config(file_path: &str, asset_server: &AssetServer) -> SongConfig {
         let wav_id = note.obj;
         if !audio_handles_map.contains_key(&wav_id) {
             // let wav_file = wav_files_map.get(&wav_id).unwrap().to_str().unwrap();
-            let wav_file = wav_files_map.get(&wav_id).clone().unwrap();
+            let wav_file = wav_files_map
+                .get(&wav_id)
+                .clone()
+                .expect("Failed to get wav_file from map");
             // let path = format!("songs/{}", file_path);
             let path_buf = PathBuf::from(file_path);
             let parent_path = path_buf
                 .parent()
                 .to_owned()
                 .expect("could not find parent path");
-            let wav_path = parent_path.join(&wav_file);
-            // println!("wav_path: {:#?}", wav_path);
+            let mut wav_path = parent_path.join(&wav_file);
+            let check_path_str = format!("assets/{}", wav_path.clone().to_str().unwrap());
+            let check_path = PathBuf::from(check_path_str);
+
+            if !check_path.exists() {
+                println!("{:?} does not exist", check_path);
+                wav_path.set_extension("ogg");
+            }
+
             let wav_handle: Handle<AudioSource> = asset_server.load(wav_path);
             audio_handles_map.insert(wav_id.to_owned(), wav_handle);
         }
@@ -187,14 +202,22 @@ pub fn load_config(file_path: &str, asset_server: &AssetServer) -> SongConfig {
         for id in obj_ids {
             if !audio_handles_map.contains_key(&id) {
                 // println!("objid {:#?}", &id);
-                let default = PathBuf::from(r"bass_A#1.wav");
-                let wav_file = wav_files_map.get(&id).clone().unwrap_or(&default);
+                // let default = PathBuf::from(r"bass_A#1.wav");
+                let wav_file = wav_files_map.get(&id).clone().unwrap(); //_or(&default);
                 let path_buf = PathBuf::from(file_path);
                 let parent_path = path_buf
                     .parent()
                     .to_owned()
                     .expect("could not find parent path");
-                let wav_path = parent_path.join(&wav_file);
+                let mut wav_path = parent_path.join(&wav_file);
+                let check_path_str = format!("assets/{}", wav_path.clone().to_str().unwrap());
+                let check_path = PathBuf::from(check_path_str);
+
+                if !check_path.exists() {
+                    println!("{:?} does not exist", check_path);
+                    wav_path.set_extension("ogg");
+                }
+
                 let wav_handle: Handle<AudioSource> = asset_server.load(wav_path);
                 audio_handles_map.insert(id.to_owned(), wav_handle);
             }

@@ -19,7 +19,7 @@ pub const AUTOPLAY_THRESHOLD: f32 = 1.;
 pub const DISTANCE: f32 = TARGET_POSITION - SPAWN_POSITION;
 
 /// Temporary global volume level
-pub const VOLUME: f64 = 0.0;
+pub const VOLUME: f64 = 0.3;
 
 /// Temporary autoplay option
 pub const AUTOPLAY_ENABLED: bool = true;

@@ -1,6 +1,10 @@
 use crate::consts::*;
 use crate::types::load_config;
+use bevy::a11y::accesskit::{NodeBuilder, Role};
+use bevy::a11y::AccessibilityNode;
+use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
+use std::ffi::OsStr;
 use std::fs::read_dir;
 
 #[derive(Resource)]
@@ -65,37 +69,82 @@ fn setup_menu(mut commands: Commands, button_materials: Res<ButtonMaterials>) {
         })
         .insert(MenuUI)
         .with_children(|parent| {
-            for button in buttons {
-                parent
-                    .spawn(ButtonBundle {
+            // Moving panel
+            parent
+                .spawn((
+                    NodeBundle {
                         style: Style {
-                            width: Val::Px(350.0),
-                            height: Val::Px(65.0),
-                            margin: UiRect::all(Val::Auto),
-                            justify_content: JustifyContent::Center,
+                            flex_direction: FlexDirection::Column,
                             align_items: AlignItems::Center,
                             ..default()
                         },
-                        background_color: button_materials.normal.into(),
                         ..default()
-                    })
-                    .with_children(|parent| {
-                        parent.spawn(TextBundle {
-                            text: Text::from_section(
-                                button.name(),
-                                TextStyle {
-                                    font: button_materials.font.clone(),
-                                    font_size: 20.0,
-                                    color: Color::rgb(0.9, 0.9, 0.9),
+                    },
+                    ScrollingList::default(),
+                    AccessibilityNode(NodeBuilder::new(Role::List)),
+                ))
+                .with_children(|parent1| {
+                    for button in buttons {
+                        parent1
+                            .spawn(ButtonBundle {
+                                style: Style {
+                                    width: Val::Px(350.0),
+                                    height: Val::Px(65.0),
+                                    margin: UiRect::all(Val::Auto),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
                                     ..default()
                                 },
-                            ),
-                            ..default()
-                        });
-                    })
-                    .insert(button);
-            }
+                                background_color: button_materials.normal.into(),
+                                ..default()
+                            })
+                            .with_children(|parent| {
+                                parent.spawn(TextBundle {
+                                    text: Text::from_section(
+                                        button.name(),
+                                        TextStyle {
+                                            font: button_materials.font.clone(),
+                                            font_size: 20.0,
+                                            color: Color::rgb(0.9, 0.9, 0.9),
+                                            ..default()
+                                        },
+                                    ),
+                                    ..default()
+                                });
+                            })
+                            .insert(button);
+                    }
+                });
         });
+}
+
+#[derive(Component, Default)]
+struct ScrollingList {
+    position: f32,
+}
+
+fn mouse_scroll(
+    mut mouse_wheel_events: EventReader<MouseWheel>,
+    mut query_list: Query<(&mut ScrollingList, &mut Style, &Parent, &Node)>,
+    query_node: Query<&Node>,
+) {
+    for mouse_wheel_event in mouse_wheel_events.read() {
+        for (mut scrolling_list, mut style, parent, list_node) in &mut query_list {
+            let items_height = list_node.size().y;
+            let container_height = query_node.get(parent.get()).unwrap().size().y;
+
+            let max_scroll = (items_height - container_height).max(0.);
+
+            let dy = match mouse_wheel_event.unit {
+                MouseScrollUnit::Line => mouse_wheel_event.y * 20.,
+                MouseScrollUnit::Pixel => mouse_wheel_event.y,
+            };
+
+            scrolling_list.position += dy;
+            scrolling_list.position = scrolling_list.position.clamp(-max_scroll, 0.);
+            style.top = Val::Px(scrolling_list.position);
+        }
+    }
 }
 
 fn despawn_menu(mut commands: Commands, query: Query<(Entity, &MenuUI)>) {
@@ -154,7 +203,7 @@ pub fn get_songs() -> Vec<String> {
         for path in paths {
             let path = path.expect("Failed to unwrap path").path();
 
-            if "bms" == path.as_path().extension().unwrap() {
+            if "bms" == path.as_path().extension().unwrap_or(OsStr::new("")) {
                 let path_stripped_prefix = path
                     .as_path()
                     .strip_prefix("assets/")
@@ -183,7 +232,8 @@ impl<S: States> Plugin for MenuPlugin<S> {
         app.add_systems(OnExit(self.state.clone()), despawn_menu);
         app.add_systems(
             Update,
-            (button_color_system, button_press_system).run_if(in_state(self.state.clone())),
+            (button_color_system, button_press_system, mouse_scroll)
+                .run_if(in_state(self.state.clone())),
         );
     }
 }
