@@ -96,7 +96,7 @@ fn play_bgms(
     let secs = time.seconds_since_startup() - 3.75;
     let secs_last = secs - time.delta_seconds_f64();
 
-    let mut remove_counter = 0;
+    // let mut remove_counter = 0;
     for bgm in &song_config.bgms {
         if secs_last < bgm.spawn_time && bgm.spawn_time <= secs {
             for id in &bgm.audio_source_ids {
@@ -122,9 +122,9 @@ fn play_bgms(
         }
     }
 
-    for _ in 0..remove_counter {
-        song_config.bgms.remove(0);
-    }
+    // for _ in 0..remove_counter {
+    // song_config.bgms.remove(0);
+    // }
 }
 
 fn spawn_bars(
@@ -246,42 +246,59 @@ fn despawn_bars(
         }
     }
 
+    // TODO need to account for notes in the same position (chords)
     let min_note = notes_in_threshold.iter().min_by_key(|x| OrderedFloat(x.1));
 
-    match min_note {
-        Some((entity, pos, bar)) => {
-            commands.entity(*entity).despawn();
+    // notes_in_threshold.sort_by_key(|x| OrderedFloat(x.1));
+    // let first_note = notes_in_threshold.first();
 
-            // get audio handle
-            let audio_handle = song_config
-                .audio_handles
-                .get(&bar.audio_source_id)
-                .expect("Audio source ID not found in map");
+    let mut notes_to_play: Vec<Option<&(Entity, f32, &Bar)>> = Vec::new();
 
-            audio.play(audio_handle.clone()).with_volume(VOLUME);
-
-            let _points = score.increase_correct(TARGET_POSITION - pos);
-
-            let msval =
-                calculate_milliseconds_from_target(*pos, TARGET_POSITION, settings.scroll_speed);
-
-            // using mostly IIDX timings for now
-            if msval <= 16.67 {
-                score.pgreats += 1;
-            } else if msval <= 33.33 {
-                score.greats += 1;
-            } else if msval <= 116.67 {
-                score.goods += 1;
-            } else if msval <= 250.0 {
-                score.bads += 1;
-            } else if msval <= 1000.0 {
-                score.poors += 1;
-            } else {
-                println!("MISS");
-            }
+    for note in notes_in_threshold.iter() {
+        if note.1 == min_note.expect("no min note").1 {
+            notes_to_play.push(Some(note));
         }
-        None => {}
-    };
+    }
+
+    for note in notes_to_play {
+        match note {
+            Some((entity, pos, bar)) => {
+                commands.entity(*entity).despawn();
+
+                // get audio handle
+                let audio_handle = song_config
+                    .audio_handles
+                    .get(&bar.audio_source_id)
+                    .expect("Audio source ID not found in map");
+
+                audio.play(audio_handle.clone()).with_volume(VOLUME);
+
+                let _points = score.increase_correct(TARGET_POSITION - pos);
+
+                let msval = calculate_milliseconds_from_target(
+                    *pos,
+                    TARGET_POSITION,
+                    settings.scroll_speed,
+                );
+
+                // using mostly IIDX timings for now
+                if msval <= 16.67 {
+                    score.pgreats += 1;
+                } else if msval <= 33.33 {
+                    score.greats += 1;
+                } else if msval <= 116.67 {
+                    score.goods += 1;
+                } else if msval <= 250.0 {
+                    score.bads += 1;
+                } else if msval <= 1000.0 {
+                    score.poors += 1;
+                } else {
+                    println!("MISS");
+                }
+            }
+            None => {}
+        };
+    }
 }
 
 fn calculate_milliseconds_from_target(pos: f32, target_pos: f32, note_speed: f32) -> f32 {
@@ -308,6 +325,7 @@ fn show_results_on_finished(
     }
 }
 
+// TODO this seems to cause notes to randomly stop playing
 fn debug_goto_results(
     mut song_config: ResMut<SongConfig>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -339,7 +357,7 @@ impl<S: States> Plugin for BarsPlugin<S> {
                 despawn_bars,
                 play_bgms,
                 show_results_on_finished,
-                debug_goto_results,
+                // debug_goto_results,
             )
                 .run_if(in_state(self.state.clone())),
         );

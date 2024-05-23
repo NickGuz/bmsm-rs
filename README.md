@@ -11,3 +11,5 @@
 - [ ] Basic settings interface (prob no UI yet)
 - [ ] Fix bug with notes randomly stopping (or randomly missing some)
 - [ ] Basic menu screen
+- [x] autoplay can't handle chords
+- [ ] how to determine when song ends (for results)?
