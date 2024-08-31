@@ -1170,6 +1170,7 @@ dependencies = [
 [[package]]
 name = "bms-rs"
 version = "0.4.4"
+source = "git+https://github.com/NickGuz/bms-rs.git#be1507c7d64784ed0c9d551ea95aa9e3b39d117e"
 dependencies = [
  "itertools",
  "num",

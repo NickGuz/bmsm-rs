@@ -48,4 +48,5 @@ opt-level = 1
 opt-level = 3
 
 [patch.crates-io]
-bms-rs = { path = "./bms-rs" }
+bms-rs = { git = "https://github.com/NickGuz/bms-rs.git" }
+# bms-rs = { path = "./bms-rs" }
