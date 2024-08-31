@@ -19,18 +19,20 @@ pub enum Positions {
     Five,
     Six,
     Seven,
+    Scratch,
 }
 impl Positions {
     /// Checks if a key that corresponds to this direction has been pressed
     pub fn key_just_pressed(&self, input: &ButtonInput<KeyCode>) -> bool {
-        let keys = match self {
-            Positions::One => [KeyCode::KeyA],
-            Positions::Two => [KeyCode::KeyS],
-            Positions::Three => [KeyCode::KeyD],
-            Positions::Four => [KeyCode::Space],
-            Positions::Five => [KeyCode::KeyJ],
-            Positions::Six => [KeyCode::KeyK],
-            Positions::Seven => [KeyCode::KeyL],
+        let keys: Vec<KeyCode> = match self {
+            Positions::One => vec![KeyCode::KeyA],
+            Positions::Two => vec![KeyCode::KeyS],
+            Positions::Three => vec![KeyCode::KeyD],
+            Positions::Four => vec![KeyCode::Space],
+            Positions::Five => vec![KeyCode::KeyJ],
+            Positions::Six => vec![KeyCode::KeyK],
+            Positions::Seven => vec![KeyCode::KeyL],
+            Positions::Scratch => vec![KeyCode::ShiftLeft, KeyCode::Semicolon],
         };
 
         keys.iter().any(|code| input.just_pressed(*code))
@@ -39,13 +41,14 @@ impl Positions {
     /// Checks if a key that corresponds to this direction is being pressed
     pub fn key_pressed(&self, input: &ButtonInput<KeyCode>) -> bool {
         let keys = match self {
-            Positions::One => [KeyCode::KeyA],
-            Positions::Two => [KeyCode::KeyS],
-            Positions::Three => [KeyCode::KeyD],
-            Positions::Four => [KeyCode::Space],
-            Positions::Five => [KeyCode::KeyJ],
-            Positions::Six => [KeyCode::KeyK],
-            Positions::Seven => [KeyCode::KeyL],
+            Positions::One => vec![KeyCode::KeyA],
+            Positions::Two => vec![KeyCode::KeyS],
+            Positions::Three => vec![KeyCode::KeyD],
+            Positions::Four => vec![KeyCode::Space],
+            Positions::Five => vec![KeyCode::KeyJ],
+            Positions::Six => vec![KeyCode::KeyK],
+            Positions::Seven => vec![KeyCode::KeyL],
+            Positions::Scratch => vec![KeyCode::ShiftLeft, KeyCode::Semicolon],
         };
 
         // println!("is {:#?} pressed?", input);
@@ -62,6 +65,7 @@ impl Positions {
             Positions::Five => 100.,
             Positions::Six => 200.,
             Positions::Seven => 300.,
+            Positions::Scratch => -400.,
         }
     }
 }
@@ -143,12 +147,18 @@ pub fn load_config(file_path: &str, asset_server: &AssetServer) -> SongConfig {
                 .to_owned()
                 .expect("could not find parent path");
             let mut wav_path = parent_path.join(&wav_file);
-            let check_path_str = format!("assets/{}", wav_path.clone().to_str().unwrap());
-            let check_path = PathBuf::from(check_path_str);
+            let mut check_path_str = format!("assets/{}", wav_path.clone().to_str().unwrap());
+            let mut check_path = PathBuf::from(check_path_str);
 
             if !check_path.exists() {
-                println!("{:?} does not exist", check_path);
+                // println!("{:?} does not exist 1", check_path);
                 wav_path.set_extension("ogg");
+                check_path_str = format!("assets/{}", wav_path.clone().to_str().unwrap());
+                check_path = PathBuf::from(check_path_str);
+
+                if !check_path.exists() {
+                    println!("ogg {:?} does not exist", check_path);
+                }
             }
 
             let wav_handle: Handle<AudioSource> = asset_server.load(wav_path);
@@ -169,6 +179,7 @@ pub fn load_config(file_path: &str, asset_server: &AssetServer) -> SongConfig {
             bms_rs::lex::command::Key::Key5 => Positions::Five,
             bms_rs::lex::command::Key::Key6 => Positions::Six,
             bms_rs::lex::command::Key::Key7 => Positions::Seven,
+            bms_rs::lex::command::Key::Scratch => Positions::Scratch,
             _ => Positions::One,
         };
 
@@ -210,12 +221,18 @@ pub fn load_config(file_path: &str, asset_server: &AssetServer) -> SongConfig {
                     .to_owned()
                     .expect("could not find parent path");
                 let mut wav_path = parent_path.join(&wav_file);
-                let check_path_str = format!("assets/{}", wav_path.clone().to_str().unwrap());
-                let check_path = PathBuf::from(check_path_str);
+                let mut check_path_str = format!("assets/{}", wav_path.clone().to_str().unwrap());
+                let mut check_path = PathBuf::from(check_path_str);
 
                 if !check_path.exists() {
-                    println!("{:?} does not exist", check_path);
+                    // println!("{:?} does not exist 2", check_path);
                     wav_path.set_extension("ogg");
+                    check_path_str = format!("assets/{}", wav_path.clone().to_str().unwrap());
+                    check_path = PathBuf::from(check_path_str);
+
+                    if !check_path.exists() {
+                        println!("ogg {:?} does not exist", check_path);
+                    }
                 }
 
                 let wav_handle: Handle<AudioSource> = asset_server.load(wav_path);
